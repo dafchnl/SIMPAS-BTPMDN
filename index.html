@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Perlintasan BTP Medan</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="header">
+  <div class="header-inner">
+    <div class="header-left">
+      <div class="logo-box"><i class="ti ti-train" aria-hidden="true"></i></div>
+      <div class="header-title">
+        <h1 id="dashH1">PERLINTASAN INTERNAL BTP</h1>
+        <p id="dashSub">Balai Teknik Perkeretaapian &bull; Kelas I Medan</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="clock-box">
+        <div class="clock-time" id="clockTime">--:--:--</div>
+        <div class="clock-date" id="clockDate">--- ----</div>
+        <div class="clock-tz" id="clockTz">WIB — UTC+7</div>
+      </div>
+      <div class="conn-badge" onclick="showPage('spreadsheet')">
+        <div class="conn-dot" id="connDot"></div>
+        <div>
+          <div class="conn-text" id="connLabel">SPREADSHEET</div>
+          <div class="conn-sub" id="connStatus">Belum terhubung</div>
+        </div>
+        <i class="ti ti-table" style="font-size:14px;color:#93c5fd" aria-hidden="true"></i>
+      </div>
+      <div id="editor-sync-badge" style="display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:8px;padding:8px 12px;cursor:default">
+        <div id="editor-sync-dot" style="width:8px;height:8px;border-radius:50%;background:#6b7280"></div>
+        <div>
+          <div style="font-size:10px;font-weight:700;color:#fff;letter-spacing:.5px">EDITOR SYNC</div>
+          <div id="editor-sync-text" style="font-size:9px;color:#93c5fd">Menunggu data editor...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="nav-bar" id="navBar">
+  <button class="nav-btn active" id="nav-dashboard" onclick="showPage('dashboard')"><i class="ti ti-dashboard" aria-hidden="true"></i> Dashboard</button>
+  <button class="nav-btn" id="nav-perlintasan" onclick="showPage('perlintasan')"><i class="ti ti-road" aria-hidden="true"></i> Perlintasan</button>
+  <button class="nav-btn" id="nav-kerusakan" onclick="showPage('kerusakan')"><i class="ti ti-alert-triangle" aria-hidden="true"></i> Kerusakan</button>
+  <button class="nav-btn" id="nav-spreadsheet" onclick="showPage('spreadsheet')"><i class="ti ti-table" aria-hidden="true"></i> Koneksi Data</button>
+  <button class="nav-btn" id="nav-laporan" onclick="showPage('laporan')"><i class="ti ti-file-report" aria-hidden="true"></i> Laporan</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- ═══ MODAL PERBAIKAN ══════════════════════════════════════ -->
+<div id="modalOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;align-items:center;justify-content:center;padding:16px">
+  <div style="background:#fff;border-radius:16px;width:100%;max-width:440px;box-shadow:0 20px 60px rgba(0,0,0,.25);overflow:hidden">
+    <!-- Header modal -->
+    <div style="background:var(--green);padding:16px 20px;display:flex;justify-content:space-between;align-items:center">
+      <div style="color:#fff">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;letter-spacing:.5px">✔ CATAT PERBAIKAN</div>
+        <div style="font-size:10px;opacity:.85;margin-top:2px">Konfirmasi kerusakan sudah diperbaiki</div>
+      </div>
+      <button onclick="tutupModal()" style="background:rgba(255,255,255,.25);border:none;border-radius:8px;color:#fff;width:32px;height:32px;font-size:18px;cursor:pointer;line-height:32px;text-align:center;padding:0">&times;</button>
+    </div>
+    <!-- Body modal -->
+    <div style="padding:18px 20px">
+      <!-- Info kerusakan -->
+      <div style="background:var(--red-light);border:1px solid #fca5a5;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--text)" id="modalKerInfo"></div>
+      <!-- Catatan perbaikan -->
+      <div style="margin-bottom:14px">
+        <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1px;margin-bottom:5px">CATATAN PERBAIKAN</div>
+        <textarea id="modalCatatan" placeholder="Contoh: Kabel sudah diganti, motor palang baru dipasang..." style="width:100%;border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:12px;font-family:'Barlow',sans-serif;resize:vertical;min-height:70px;outline:none;color:var(--text);background:var(--surface2)" onfocus="this.style.borderColor='var(--green)'" onblur="this.style.borderColor='var(--border)'"></textarea>
+      </div>
+      <!-- Upload foto bukti -->
+      <div style="margin-bottom:16px">
+        <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1px;margin-bottom:8px">FOTO BUKTI PERBAIKAN</div>
+        <label style="display:flex;align-items:center;gap:8px;padding:9px 14px;background:var(--blue-light);border:1.5px dashed var(--blue);border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;color:var(--blue)">
+          <i class="ti ti-camera-plus" style="font-size:18px"></i> Pilih Foto (bisa lebih dari 1)
+          <input type="file" accept="image/*" multiple onchange="modalTambahFoto(this)" style="display:none">
+        </label>
+        <div id="modalFotoPreview" style="margin-top:8px;min-height:50px;background:var(--surface2);border-radius:8px;border:1px solid var(--border);padding:4px"></div>
+      </div>
+      <!-- Tombol aksi -->
+      <div style="display:flex;gap:10px">
+        <button onclick="tutupModal()" style="flex:1;padding:10px;background:var(--surface2);border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;color:var(--muted)">Batal</button>
+        <button onclick="konfirmasiPerbaikan()" style="flex:2;padding:10px;background:var(--green);border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;box-shadow:0 3px 10px rgba(22,163,74,.35)">
+          <i class="ti ti-circle-check"></i> Konfirmasi Sudah Diperbaiki
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="page active" id="page-dashboard">
+<div class="main-content">
+  <div class="stats-row" id="statsRow">
+    <div class="stat-card good">
+      <div class="stat-icon"><i class="ti ti-check" aria-hidden="true"></i></div>
+      <div class="stat-label">Kondisi Baik</div>
+      <div class="stat-value" id="sc-baik">14</div>
+      <div class="stat-sub">JPL berfungsi normal</div>
+    </div>
+    <div class="stat-card warn">
+      <div class="stat-icon"><i class="ti ti-alert-circle" aria-hidden="true"></i></div>
+      <div class="stat-label">Perlu Perhatian</div>
+      <div class="stat-value" id="sc-sedang">4</div>
+      <div class="stat-sub">Kerusakan ringan–sedang</div>
+    </div>
+    <div class="stat-card bad">
+      <div class="stat-icon"><i class="ti ti-x" aria-hidden="true"></i></div>
+      <div class="stat-label">Kerusakan Parah</div>
+      <div class="stat-value" id="sc-parah">2</div>
+      <div class="stat-sub">Palang tidak berfungsi</div>
+    </div>
+    <div class="stat-card info">
+      <div class="stat-icon"><i class="ti ti-road" aria-hidden="true"></i></div>
+      <div class="stat-label">Total JPL</div>
+      <div class="stat-value" id="sc-total">20</div>
+      <div class="stat-sub">Jalur terpantau</div>
+    </div>
+  </div>
+
+  <div class="mid-row">
+    <div class="donut-card">
+      <div class="section-label">Kondisi Perlintasan</div>
+      <div class="donut-wrap">
+        <svg width="130" height="130" viewBox="0 0 130 130" id="donutSvg">
+          <circle cx="65" cy="65" r="50" fill="none" stroke="#e5e7eb" stroke-width="14"/>
+          <circle id="donut-baik" cx="65" cy="65" r="50" fill="none" stroke="#16a34a" stroke-width="14"
+            stroke-dasharray="314.2" stroke-dashoffset="94.3" stroke-linecap="round"/>
+          <circle id="donut-sedang" cx="65" cy="65" r="50" fill="none" stroke="#d97706" stroke-width="14"
+            stroke-dasharray="314.2" stroke-dashoffset="251.4" stroke-linecap="round"/>
+          <circle id="donut-parah" cx="65" cy="65" r="50" fill="none" stroke="#dc2626" stroke-width="14"
+            stroke-dasharray="314.2" stroke-dashoffset="282.8" stroke-linecap="round"/>
+        </svg>
+        <div class="donut-center">
+          <div class="donut-pct" id="donut-pct">70%</div>
+          <div class="donut-lbl">BAIK</div>
+        </div>
+      </div>
+      <div class="donut-legend">
+        <div class="legend-row"><div class="legend-dot" style="background:#16a34a"></div><div class="legend-label">Baik</div><div class="legend-val" id="leg-baik">14</div></div>
+        <div class="legend-row"><div class="legend-dot" style="background:#d97706"></div><div class="legend-label">Sedang</div><div class="legend-val" id="leg-sedang">4</div></div>
+        <div class="legend-row"><div class="legend-dot" style="background:#dc2626"></div><div class="legend-label">Parah</div><div class="legend-val" id="leg-parah">2</div></div>
+      </div>
+    </div>
+
+    <div class="rail-card">
+      <div class="section-label">Peta Kondisi Jalur — BTP Kelas I Medan</div>
+      <div class="rail-scene">
+        <div class="rail-sleepers"></div>
+        <div class="rail-track"></div>
+        <div class="train">
+          <div class="train-body">
+            <div class="train-window train-w1"></div><div class="train-window train-w2"></div>
+            <div class="train-window train-w3"></div><div class="train-window train-w4"></div>
+            <div class="train-wheel train-wh1"></div><div class="train-wheel train-wh2"></div>
+            <div class="train-wheel train-wh3"></div><div class="train-wheel train-wh4"></div>
+          </div>
+        </div>
+        <div class="jpl-markers" id="jplMarkers"></div>
+      </div>
+      <div class="jpl-quick-grid" id="jplQuickGrid"></div>
+    </div>
+  </div>
+
+  <div class="section-header">
+    <div>
+      <div class="section-title">Status Terkini Perlintasan</div>
+    </div>
+    <div style="font-size:11px;color:var(--muted)">Klik baris untuk detail lengkap</div>
+  </div>
+  <div class="table-wrap">
+    <table class="data-table" id="dashTable"></table>
+  </div>
+</div>
+</div>
+
+<div class="page" id="page-perlintasan">
+<div class="main-content">
+  <div class="section-header">
+    <div class="section-title">Daftar Perlintasan JPL 1–20</div>
+    <div style="font-size:11px;color:var(--muted)">Klik Detail untuk mengelola data</div>
+  </div>
+  <div class="table-wrap">
+    <table class="data-table" id="jplTable"></table>
+  </div>
+</div>
+</div>
+
+<div class="page" id="page-detail">
+<div class="main-content">
+  <div class="detail-header">
+    <button class="back-btn" onclick="goBack()"><i class="ti ti-arrow-left" aria-hidden="true"></i> Kembali</button>
+    <div>
+      <div class="breadcrumb">Dashboard <span>›</span> Perlintasan <span>›</span> <span id="detailBreadcrumb"></span></div>
+      <div class="detail-title" id="detailTitle"></div>
+    </div>
+  </div>
+  <div class="detail-grid">
+    <div class="info-card">
+      <div class="info-card-title"><i class="ti ti-info-circle" aria-hidden="true"></i> Informasi Perlintasan</div>
+      <div id="detailInfo"></div>
+    </div>
+    <div class="info-card">
+      <div class="info-card-title"><i class="ti ti-tool" aria-hidden="true"></i> Data Teknis</div>
+      <div id="detailTeknis"></div>
+    </div>
+  </div>
+  <div class="info-card" style="margin-bottom:14px">
+    <div class="info-card-title"><i class="ti ti-photo" aria-hidden="true"></i> Dokumentasi Foto Perlintasan</div>
+    <div class="photo-grid" id="photoGrid"></div>
+  </div>
+  <div class="kondisi-grid">
+    <div class="kondisi-card">
+      <div class="kondisi-top">
+        <div class="kondisi-name"><i class="ti ti-building-warehouse" aria-hidden="true"></i> Kondisi Ruangan</div>
+        <button class="update-btn" onclick="updateKondisi('ruangan')"><i class="ti ti-edit" aria-hidden="true"></i> Update</button>
+      </div>
+      <div class="kondisi-val" id="kondisiRuangan">—</div>
+      <div class="kondisi-updated" id="updatedRuangan">Terakhir update: —</div>
+    </div>
+    <div class="kondisi-card">
+      <div class="kondisi-top">
+        <div class="kondisi-name"><i class="ti ti-tools" aria-hidden="true"></i> Kondisi Peralatan</div>
+        <button class="update-btn" onclick="updateKondisi('peralatan')"><i class="ti ti-edit" aria-hidden="true"></i> Update</button>
+      </div>
+      <div class="kondisi-val" id="kondisiPeralatan">—</div>
+      <div class="kondisi-updated" id="updatedPeralatan">Terakhir update: —</div>
+    </div>
+  </div>
+  <div class="kerusakan-form">
+    <div class="form-title"><i class="ti ti-alert-triangle" aria-hidden="true"></i> Dokumentasi Kerusakan</div>
+    <div class="form-row">
+      <div class="form-group">
+        <div class="form-label">Jenis Kerusakan</div>
+        <input class="form-input" id="fJenis" placeholder="Contoh: Kabel putus, motor rusak..."/>
+      </div>
+      <div class="form-group">
+        <div class="form-label">Tingkat Keparahan</div>
+        <select class="form-select" id="fSeverity">
+          <option value="ringan">Ringan</option>
+          <option value="sedang">Sedang</option>
+          <option value="parah">Parah</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group" style="margin-bottom:10px">
+      <div class="form-label">Dampak Terhadap Palang</div>
+      <div class="radio-group">
+        <label class="radio-opt"><input type="radio" name="dampak" value="berfungsi" checked> Palang masih berfungsi</label>
+        <label class="radio-opt"><input type="radio" name="dampak" value="tidak"> Palang TIDAK berfungsi</label>
+      </div>
+    </div>
+    <div class="form-group" style="margin-bottom:10px">
+      <div class="form-label">Keterangan</div>
+      <input class="form-input" id="fKeterangan" placeholder="Deskripsi detail kerusakan..." style="width:100%"/>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center">
+      <button class="save-btn" onclick="saveKerusakan()"><i class="ti ti-device-floppy" aria-hidden="true"></i> Simpan Kerusakan</button>
+      <div style="font-size:11px;color:var(--muted)">Data masuk ke menu Kerusakan</div>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="page" id="page-kerusakan">
+<div class="main-content">
+  <div class="section-header">
+    <div>
+      <div class="section-title">Kerusakan Perlintasan</div>
+    </div>
+    <div style="font-size:11px;color:var(--muted)">Diurutkan: Parah → Sedang → Ringan</div>
+  </div>
+  <div class="kerusakan-list" id="kerusakanList"></div>
+</div>
+</div>
+
+<div class="page" id="page-spreadsheet">
+<div class="main-content">
+  <div class="ss-panel">
+    <div class="ss-title"><i class="ti ti-table" aria-hidden="true"></i> Koneksi Google Spreadsheet</div>
+    <div class="ss-sub">Hubungkan dashboard ke Google Spreadsheet untuk sinkronisasi data real-time</div>
+    <div class="ss-input-row">
+      <input class="ss-input" id="ssUrl" placeholder="https://docs.google.com/spreadsheets/d/..."/>
+      <button class="ss-btn" onclick="connectSpreadsheet()"><i class="ti ti-plug" aria-hidden="true"></i> Hubungkan</button>
+    </div>
+    <div class="ss-input-row">
+      <input class="ss-input" id="ssKey" placeholder="API Key Google Sheets (opsional)"/>
+      <button class="ss-btn" style="background:#6b7280" onclick="testConn()"><i class="ti ti-wifi" aria-hidden="true"></i> Test</button>
+    </div>
+    <div class="ss-status">
+      <div class="ss-status-dot" id="ssDot" style="background:#ef4444"></div>
+      <div class="ss-status-text" id="ssStatusText">Belum terhubung ke spreadsheet</div>
+    </div>
+    <div class="help-box">
+      <div class="help-title">Cara Menghubungkan</div>
+      <div class="help-text">
+        1. Buka Google Spreadsheet BTP Medan Anda<br>
+        2. Klik Share → Anyone with link → Viewer<br>
+        3. Copy URL lalu paste di kolom di atas<br>
+        4. Klik tombol <strong>Hubungkan</strong> atau <strong>Test</strong> koneksi
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="page" id="page-laporan">
+<div class="main-content">
+  <div class="laporan-card">
+    <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--blue);font-weight:700;margin-bottom:16px">Export & Laporan</div>
+    <button class="export-btn" style="background:#dc2626" onclick="showToast('Laporan PDF sedang dibuat...')"><i class="ti ti-pdf" aria-hidden="true"></i> Export Laporan PDF</button>
+    <button class="export-btn" style="background:#16a34a" onclick="showToast('Data diekspor ke Excel')"><i class="ti ti-table-export" aria-hidden="true"></i> Export ke Excel</button>
+    <button class="export-btn" style="background:var(--blue)" onclick="showToast('Sinkronisasi spreadsheet...')"><i class="ti ti-refresh" aria-hidden="true"></i> Sinkron ke Spreadsheet</button>
+    <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
+      <div style="font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:8px;font-weight:700">REKAP BULAN INI</div>
+      <div style="font-size:12px;color:var(--text2);line-height:2.2">
+        Periode: <span style="color:var(--navy);font-weight:700" id="currentPeriod"></span><br>
+        Total JPL dipantau: <span style="color:var(--blue);font-weight:700">20 perlintasan</span><br>
+        Tingkat kepatuhan data: <span style="color:var(--green);font-weight:700">85%</span><br>
+        Laporan terakhir: <span style="color:var(--text);font-weight:700" id="lastReport"></span>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
