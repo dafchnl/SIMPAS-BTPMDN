@@ -114,6 +114,20 @@ function openDetail(id){
   document.getElementById('kondisiPeralatan').textContent=d.peralatan;
   document.getElementById('updatedPeralatan').textContent='Terakhir update: '+d.updatedP;
   showPage('detail');
+  document.getElementById("profilJpl").innerText =
+d.jpl;
+
+document.getElementById("profilKm").innerText =
+d.km;
+
+document.getElementById("profilLokasi").innerText =
+d.lokasi || "-";
+
+document.getElementById("profilRuangan").innerText =
+d.ruangan;
+
+document.getElementById("profilPeralatan").innerText =
+d.peralatan;
 }
 
 function goBack(){showPage(prevPage)}
